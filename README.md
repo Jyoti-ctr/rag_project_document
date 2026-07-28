@@ -69,7 +69,7 @@ docker run -d --name rag_mongo -p 27017:27017 mongo:7
 2. Start the FastAPI server:
 
 ```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 3. Open the app in your browser:
@@ -95,7 +95,7 @@ docker compose down
 ## Important notes
 
 - The first run may take a few minutes because the embedding model is downloaded.
-- The app uses the `llama3-8b-8192` Groq model, so a valid Groq API key is required.
+- The app uses the `llama-3.1-8b-instant` Groq model, so a valid Groq API key is required.
 - If you change the database connection settings, make sure they match your MongoDB instance.
 - The backend automatically creates the required indexes on startup.
 
@@ -115,6 +115,6 @@ docker compose down
 | Auth           | JWT (python-jose), Passlib (bcrypt)          |
 | Database       | MongoDB, Motor (async driver)                |
 | Embeddings     | Sentence-Transformers (`all-MiniLM-L6-v2`)   |
-| LLM            | Groq API (`llama3-8b-8192`)                  |
+| LLM            | Groq API (`llama-3.1-8b-instant`)                  |
 | Frontend       | HTML5, CSS3, Vanilla JS, Jinja2              |
 | Deployment     | Docker, Docker Compose                       |
