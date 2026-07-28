@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — RAG Backend</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-mark">
+        <span class="brand-dot"></span>
+        RAG BACKEND
+      </div>
+
+      <nav class="nav-group">
+        <button class="nav-item active" data-view="overview">
+          <span class="nav-icon">▤</span> Overview
+        </button>
+        <button class="nav-item" data-view="upload">
+          <span class="nav-icon">⇪</span> Upload document
+        </button>
+        <button class="nav-item" data-view="chat">
+          <span class="nav-icon">✦</span> Chat
+        </button>
+      </nav>
+
+      <div class="sidebar-foot">
+        <div class="user-chip">
+          <span class="name" id="userName">—</span>
+          <span class="email" id="userEmail">—</span>
+        </div>
+        <button class="btn btn-danger" id="logoutBtn">Log out</button>
+      </div>
+    </aside>
+
+    <main class="main">
+
+      <!-- ============================= OVERVIEW ============================= -->
+      <section class="view active" id="view-overview">
+        <div class="page-head flex-between">
+          <div>
+            <h1>Your documents</h1>
+            <p>Everything you've ingested into the retrieval index.</p>
+          </div>
+          <button class="btn btn-ghost" id="refreshDocsBtn">Refresh</button>
+        </div>
+
+        <div class="panel">
+          <h3>Document Library</h3>
+          <div id="docListLoading" class="loading-row hidden">
+            <span class="spinner"></span> Loading documents...
+          </div>
+          <div id="docList"></div>
+          <div class="empty-state hidden" id="docEmpty">
+            <div class="glyph">▢</div>
+            No documents yet. Upload your first one to start chatting.
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================= UPLOAD ============================= -->
+      <section class="view" id="view-upload">
+        <div class="page-head">
+          <h1>Upload document</h1>
+          <p>Paste text content — it will be chunked and embedded automatically.</p>
+        </div>
+
+        <div class="panel">
+          <div class="form-error" id="uploadError"></div>
+          <form id="uploadForm">
+            <div class="field">
+              <label for="docTitle">Title</label>
+              <input type="text" id="docTitle" placeholder="e.g. Employee Handbook 2026" required />
+            </div>
+            <div class="field">
+              <label for="docContent">Content</label>
+              <textarea id="docContent" rows="10" placeholder="Paste the full text content here..." required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary" id="uploadBtn" style="width:auto;">
+              Ingest document
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <!-- ============================= CHAT ============================= -->
+      <section class="view" id="view-chat">
+        <div class="page-head">
+          <h1>Chat</h1>
+          <p>Ask a question — answers are grounded in your uploaded documents.</p>
+        </div>
+
+        <div class="grid-2">
+          <div class="panel">
+            <h3>Conversation</h3>
+            <div class="chat-shell">
+              <div class="chat-log" id="chatLog">
+                <div class="empty-state" id="chatEmpty">
+                  <div class="glyph">✦</div>
+                  Ask your first question below.
+                </div>
+              </div>
+              <div id="chatLoading" class="loading-row hidden mt-8">
+                <span class="spinner"></span> Retrieving context and generating answer...
+              </div>
+              <form class="chat-input-row" id="chatForm">
+                <input type="text" id="chatInput" placeholder="Ask something about your documents..." required />
+                <button type="submit" class="btn btn-primary" style="width:auto;" id="chatSendBtn">Send</button>
+              </form>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h3>Retrieved context</h3>
+            <div id="contextPanel" class="context-panel">
+              <div class="empty-state" id="contextEmpty">
+                <div class="glyph">◈</div>
+                Retrieved chunks and similarity scores will appear here.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <div class="toast-stack" id="toastStack"></div>
+
+  <script src="/static/js/app.js"></script>
+  <script>
+    (function () {
+      if (!Auth.getToken()) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const user = Auth.getUser();
+      if (user) {
+        document.getElementById("userName").textContent = user.full_name;
+        document.getElementById("userEmail").textContent = user.email;
+      }
+
+      // ---- Navigation ----
+      const navItems = document.querySelectorAll(".nav-item");
+      const views = document.querySelectorAll(".view");
+
+      navItems.forEach((item) => {
+        item.addEventListener("click", () => {
+          navItems.forEach((i) => i.classList.remove("active"));
+          views.forEach((v) => v.classList.remove("active"));
+          item.classList.add("active");
+          document.getElementById("view-" + item.dataset.view).classList.add("active");
+
+          if (item.dataset.view === "overview") loadDocuments();
+        });
+      });
+
+      document.getElementById("logoutBtn").addEventListener("click", () => {
+        Auth.clearSession();
+        window.location.href = "/login";
+      });
+
+      // ---- Document list ----
+      async function loadDocuments() {
+        const loading = document.getElementById("docListLoading");
+        const list = document.getElementById("docList");
+        const empty = document.getElementById("docEmpty");
+
+        loading.classList.remove("hidden");
+        empty.classList.add("hidden");
+        list.innerHTML = "";
+
+        try {
+          const data = await Api.get("/documents");
+          loading.classList.add("hidden");
+
+          if (!data.documents.length) {
+            empty.classList.remove("hidden");
+            return;
+          }
+
+          data.documents.forEach((doc) => {
+            const row = document.createElement("div");
+            row.className = "doc-row";
+            row.innerHTML = `
+              <div>
+                <div class="doc-title">${escapeHtml(doc.title)}</div>
+                <div class="doc-meta">${doc.chunk_count} chunks · ${new Date(doc.created_at).toLocaleString()}</div>
+              </div>
+            `;
+            list.appendChild(row);
+          });
+        } catch (err) {
+          loading.classList.add("hidden");
+          Toast.show(err.message || "Failed to load documents.", "error");
+        }
+      }
+
+      document.getElementById("refreshDocsBtn").addEventListener("click", loadDocuments);
+
+      // ---- Upload ----
+      const uploadForm = document.getElementById("uploadForm");
+      const uploadError = document.getElementById("uploadError");
+      const uploadBtn = document.getElementById("uploadBtn");
+
+      uploadForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        uploadError.classList.remove("visible");
+        uploadBtn.disabled = true;
+        uploadBtn.textContent = "Ingesting...";
+
+        try {
+          const title = document.getElementById("docTitle").value.trim();
+          const content = document.getElementById("docContent").value.trim();
+
+          const data = await Api.post("/documents/upload", { title, content });
+          Toast.show(`"${data.document.title}" ingested (${data.document.chunk_count} chunks).`, "success");
+          uploadForm.reset();
+        } catch (err) {
+          uploadError.textContent = err.message || "Upload failed.";
+          uploadError.classList.add("visible");
+        } finally {
+          uploadBtn.disabled = false;
+          uploadBtn.textContent = "Ingest document";
+        }
+      });
+
+      // ---- Chat ----
+      const chatForm = document.getElementById("chatForm");
+      const chatInput = document.getElementById("chatInput");
+      const chatLog = document.getElementById("chatLog");
+      const chatEmpty = document.getElementById("chatEmpty");
+      const chatLoading = document.getElementById("chatLoading");
+      const chatSendBtn = document.getElementById("chatSendBtn");
+      const contextPanel = document.getElementById("contextPanel");
+      const contextEmpty = document.getElementById("contextEmpty");
+
+      function addMessage(text, who) {
+        chatEmpty.classList.add("hidden");
+        const bubble = document.createElement("div");
+        bubble.className = "msg " + (who === "user" ? "msg-user" : "msg-ai");
+        bubble.textContent = text;
+        chatLog.appendChild(bubble);
+        chatLog.scrollTop = chatLog.scrollHeight;
+      }
+
+      function renderContext(chunks) {
+        contextPanel.innerHTML = "";
+        if (!chunks || !chunks.length) {
+          contextPanel.appendChild(contextEmpty);
+          return;
+        }
+
+        chunks.forEach((chunk) => {
+          const pct = Math.max(0, Math.min(100, chunk.similarity_score * 100));
+          const el = document.createElement("div");
+          el.className = "context-chunk";
+          el.innerHTML = `
+            <div class="context-chunk-head">
+              <span>DOC ${chunk.document_id.slice(-6)} · CHUNK ${chunk.chunk_number}</span>
+              <span class="score-value">${chunk.similarity_score.toFixed(3)}</span>
+            </div>
+            <div class="context-chunk-body">${escapeHtml(chunk.content).slice(0, 260)}${chunk.content.length > 260 ? "…" : ""}</div>
+            <div class="score-bar"><div class="score-bar-fill" style="width:${pct}%"></div></div>
+          `;
+          contextPanel.appendChild(el);
+        });
+      }
+
+      chatForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const question = chatInput.value.trim();
+        if (!question) return;
+
+        addMessage(question, "user");
+        chatInput.value = "";
+        chatLoading.classList.remove("hidden");
+        chatSendBtn.disabled = true;
+
+        try {
+          const data = await Api.post("/chat", { question });
+          addMessage(data.answer, "ai");
+          renderContext(data.retrieved_context);
+        } catch (err) {
+          Toast.show(err.message || "Chat request failed.", "error");
+        } finally {
+          chatLoading.classList.add("hidden");
+          chatSendBtn.disabled = false;
+        }
+      });
+
+      function escapeHtml(str) {
+        const div = document.createElement("div");
+        div.textContent = str;
+        return div.innerHTML;
+      }
+
+      // Initial load
+      loadDocuments();
+    })();
+  </script>
+</body>
+</html>

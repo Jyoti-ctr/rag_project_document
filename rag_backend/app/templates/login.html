@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign in — RAG Backend</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <div class="auth-shell">
+    <aside class="auth-side">
+      <div class="brand-mark">
+        <span class="brand-dot"></span>
+        RAG BACKEND
+      </div>
+
+      <div>
+        <h1>Ask questions of your own documents.</h1>
+        <p class="lead">Upload text, we chunk it, embed it, and retrieve exactly the
+          passages your question needs before the model ever answers.</p>
+
+        <div class="pipeline mt-16">
+          <div class="step"><span class="idx">01</span> Upload document</div>
+          <div class="step"><span class="idx">02</span> Chunk + embed content</div>
+          <div class="step"><span class="idx">03</span> Ask a question</div>
+          <div class="step"><span class="idx">04</span> Retrieve top matches</div>
+          <div class="step"><span class="idx">05</span> Groq answers with context</div>
+        </div>
+      </div>
+
+      <span class="eyebrow">FastAPI · MongoDB · Sentence-Transformers · Groq</span>
+    </aside>
+
+    <div class="auth-form-wrap">
+      <div class="auth-card">
+        <h2>Sign in</h2>
+        <p class="sub">Welcome back. Enter your credentials to continue.</p>
+
+        <div class="form-error" id="formError"></div>
+
+        <form id="loginForm">
+          <div class="field">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" placeholder="you@example.com" required />
+          </div>
+          <div class="field">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" placeholder="••••••••" required />
+          </div>
+          <button type="submit" class="btn btn-primary" id="loginBtn">Sign in</button>
+        </form>
+
+        <p class="auth-foot">Don't have an account? <a href="/signup">Create one</a></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-stack" id="toastStack"></div>
+
+  <script src="/static/js/app.js"></script>
+  <script>
+    (function () {
+      if (Auth.getToken()) {
+        window.location.href = "/dashboard";
+      }
+
+      const form = document.getElementById("loginForm");
+      const errorBox = document.getElementById("formError");
+      const btn = document.getElementById("loginBtn");
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        errorBox.classList.remove("visible");
+        btn.disabled = true;
+        btn.textContent = "Signing in...";
+
+        try {
+          const email = document.getElementById("email").value.trim();
+          const password = document.getElementById("password").value;
+
+          const data = await Api.post("/auth/login", { email, password });
+          Auth.setSession(data.token.access_token, data.user);
+          window.location.href = "/dashboard";
+        } catch (err) {
+          errorBox.textContent = err.message || "Unable to sign in.";
+          errorBox.classList.add("visible");
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "Sign in";
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
