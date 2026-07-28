@@ -29,7 +29,7 @@ services:
       ACCESS_TOKEN_EXPIRE_MINUTES: 60
       EMBEDDING_MODEL_NAME: all-MiniLM-L6-v2
       GROQ_API_KEY: ${GROQ_API_KEY:-}
-      GROQ_MODEL_NAME: llama3-8b-8192
+      GROQ_MODEL_NAME: llama-3.1-8b-instant
       CHUNK_SIZE: 500
       CHUNK_OVERLAP: 50
       TOP_K_CHUNKS: 3
