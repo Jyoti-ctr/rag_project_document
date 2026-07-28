@@ -33,13 +33,13 @@ class Settings(BaseSettings):
     # ---------------------------------------------------------------------
     # AI / Embeddings
     # ---------------------------------------------------------------------
-    EMBEDDING_MODEL_NAME: str = "all-MiniLM-L6-v2"
+    EMBEDDING_MODEL_NAME: str = "paraphrase-MiniLM-L3-v2"
 
     # ---------------------------------------------------------------------
     # Groq
     # ---------------------------------------------------------------------
     GROQ_API_KEY: str = ""
-    GROQ_MODEL_NAME: str = "llama-3.1-8b-instant"
+    GROQ_MODEL_NAME: str = "llama-3.1-8b-instant "
 
     # ---------------------------------------------------------------------
     # Chunking

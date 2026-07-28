@@ -23,9 +23,22 @@ class EmbeddingModel:
     @classmethod
     def get_instance(cls) -> SentenceTransformer:
         if cls._instance is None:
-            logger.info("Loading embedding model '%s' (one-time load)...", settings.EMBEDDING_MODEL_NAME)
-            cls._instance = SentenceTransformer(settings.EMBEDDING_MODEL_NAME)
-            logger.info("Embedding model loaded successfully.")
+            # Fallback to a lightweight model (paraphrase-MiniLM-L3-v2) if not specified
+            # to fit strictly within free-tier memory limits (512 MB RAM).
+            model_name = getattr(
+                settings, 
+                "EMBEDDING_MODEL_NAME", 
+                "paraphrase-MiniLM-L3-v2"
+            )
+
+            logger.info("Loading embedding model '%s' (one-time load)...", model_name)
+            
+            cls._instance = SentenceTransformer(
+                model_name,
+                device="cpu"
+            )
+            logger.info("Embedding model loaded successfully on CPU.")
+            
         return cls._instance
 
 
