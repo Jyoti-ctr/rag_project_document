@@ -11,6 +11,41 @@ This project is a FastAPI-based Retrieval-Augmented Generation (RAG) application
 - Answer generation using a Groq model
 - A simple web UI for login, signup, and dashboard usage
 
+- ---
+
+## Key Features
+
+- **JWT Authentication:** Secure user signup, login, and token-based route protection.
+- **Document Ingestion & Parsing:** Upload `.pdf` and `.txt` files directly via multipart form data (`pypdf` extraction).
+- **Serverless Cloud Embeddings:** Offloads vector generation to the Hugging Face `InferenceClient` SDK (`sentence-transformers/all-MiniLM-L6-v2`), eliminating local PyTorch/SentenceTransformers memory usage.
+- **Low-Memory Footprint:** Optimized to run strictly within 512 MB RAM environments (e.g., Render free tier).
+- **Vector Search & Persistence:** Async document chunking, indexing, and vector storage backed by MongoDB Atlas (Motor driver).
+- **Sub-Second LLM Generation:** Answers generated using Groq's high-speed inference engine (`llama-3.1-8b-instant`).
+- **Interactive UI:** Built-in web dashboard for user registration, file uploads, and contextual chat.
+
+---
+
+## Architecture Flow
+
+```text
+  [ Client / Web UI ]
+          │
+          ▼
+  ┌───────────────┐
+  │ FastAPI App   │ ──(File Upload)──> [ pypdf Extract & Text Chunking ]
+  └───────┬───────┘                                    │
+          │                                            ▼
+          ├────(HuggingFace SDK)────> [ HF Inference Cloud API ]
+          │                                            │
+          │ <───(Return 384-d Vectors)─────────────────┘
+          │
+          ├───(Save Chunks & Embeddings)──────────────> [ MongoDB Atlas ]
+          │
+          ├───(Vector Cosine Similarity)──────────────> [ Top-K Context Chunks ]
+          │
+          └────(Context + User Query)─> [ Groq LLaMA 3.1 ] ───> [ Grounded Response ]
+```
+---
 ## Prerequisites
 
 Before running the project, make sure you have:
@@ -19,6 +54,7 @@ Before running the project, make sure you have:
 - pip
 - MongoDB running locally or Docker installed
 - A Groq API key from https://console.groq.com
+- A Hugging Face User Access Token (Read permission from huggingface.co/settings/tokens)
 
 ## Installation
 
@@ -118,3 +154,4 @@ docker compose down
 | LLM            | Groq API (`llama-3.1-8b-instant`)                  |
 | Frontend       | HTML5, CSS3, Vanilla JS, Jinja2              |
 | Deployment     | Docker, Docker Compose                       |
+|Embeddings      | Hugging Face Inference SDK (huggingface-hub, all-MiniLM-L6-v2) |  
