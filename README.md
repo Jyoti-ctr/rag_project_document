@@ -11,8 +11,11 @@ This project is a FastAPI-based Retrieval-Augmented Generation (RAG) application
 - Answer generation using a Groq model
 - A simple web UI for login, signup, and dashboard usage
 
-- ---
-
+----
+## Check out Live Demo
+https://rag-project-document.onrender.com/dashboard
+    
+----
 ## Key Features
 
 - **JWT Authentication:** Secure user signup, login, and token-based route protection.
