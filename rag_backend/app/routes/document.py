@@ -4,14 +4,10 @@ routes/document.py
 Document ingestion endpoints (protected by JWT auth).
 """
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 
-from app.schemas.document import (
-    DocumentListResponse,
-    DocumentUploadRequest,
-    DocumentUploadResponse,
-)
-from app.services.document_service import delete_document, list_documents, upload_document
+from app.schemas.document import DocumentListResponse, DocumentUploadResponse
+from app.services.document_service import delete_document, list_documents, upload_document_from_file
 from app.utils.dependencies import get_current_user_id
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
@@ -19,14 +15,21 @@ router = APIRouter(prefix="/documents", tags=["Documents"])
 
 @router.post("/upload", response_model=DocumentUploadResponse, status_code=status.HTTP_201_CREATED)
 async def upload(
-    payload: DocumentUploadRequest,
+    title: str = Form(default=""),
+    file: UploadFile = File(...),
     user_id: str = Depends(get_current_user_id),
 ) -> DocumentUploadResponse:
     """
-    Ingests a new document: stores it, chunks the content, generates
-    embeddings for each chunk, and persists everything to MongoDB.
+    Accepts a PDF or TXT file upload, extracts its text, chunks it,
+    generates embeddings, and persists everything to MongoDB.
     """
-    document = await upload_document(payload, user_id)
+    file_bytes = await file.read()
+    document = await upload_document_from_file(
+        file_bytes=file_bytes,
+        filename=file.filename or "uploaded_file",
+        title=title,
+        user_id=user_id,
+    )
     return DocumentUploadResponse(document=document)
 
 

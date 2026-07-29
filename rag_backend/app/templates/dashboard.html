@@ -64,7 +64,7 @@
       <section class="view" id="view-upload">
         <div class="page-head">
           <h1>Upload document</h1>
-          <p>Paste text content — it will be chunked and embedded automatically.</p>
+          <p>Upload a PDF or TXT file — the text will be extracted, chunked, and embedded automatically.</p>
         </div>
 
         <div class="panel">
@@ -75,11 +75,12 @@
               <input type="text" id="docTitle" placeholder="e.g. Employee Handbook 2026" required />
             </div>
             <div class="field">
-              <label for="docContent">Content</label>
-              <textarea id="docContent" rows="10" placeholder="Paste the full text content here..." required></textarea>
+              <label for="documentFile">File</label>
+              <input type="file" id="documentFile" accept=".pdf,.txt" required />
+              <small class="form-hint">Supported formats: .pdf and .txt.</small>
             </div>
             <button type="submit" class="btn btn-primary" id="uploadBtn" style="width:auto;">
-              Ingest document
+              Upload document
             </button>
           </form>
         </div>
@@ -210,21 +211,31 @@
         e.preventDefault();
         uploadError.classList.remove("visible");
         uploadBtn.disabled = true;
-        uploadBtn.textContent = "Ingesting...";
+        uploadBtn.textContent = "Uploading...";
 
         try {
           const title = document.getElementById("docTitle").value.trim();
-          const content = document.getElementById("docContent").value.trim();
+          const fileInput = document.getElementById("documentFile");
+          const file = fileInput.files && fileInput.files[0];
 
-          const data = await Api.post("/documents/upload", { title, content });
+          if (!file) {
+            throw new Error("Please select a .pdf or .txt file.");
+          }
+
+          const formData = new FormData();
+          formData.append("title", title || file.name.replace(/\.[^.]+$/, ""));
+          formData.append("file", file);
+
+          const data = await Api.upload("/documents/upload", formData);
           Toast.show(`"${data.document.title}" ingested (${data.document.chunk_count} chunks).`, "success");
           uploadForm.reset();
+          loadDocuments();
         } catch (err) {
           uploadError.textContent = err.message || "Upload failed.";
           uploadError.classList.add("visible");
         } finally {
           uploadBtn.disabled = false;
-          uploadBtn.textContent = "Ingest document";
+          uploadBtn.textContent = "Upload document";
         }
       });
 

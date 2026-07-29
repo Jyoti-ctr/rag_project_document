@@ -34,14 +34,24 @@ const Auth = {
 
 const Api = {
   async _request(method, path, body) {
-    const headers = { "Content-Type": "application/json" };
+    const headers = {};
     const token = Auth.getToken();
     if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    let requestBody = undefined;
+    if (body !== undefined) {
+      if (body instanceof FormData) {
+        requestBody = body;
+      } else {
+        headers["Content-Type"] = "application/json";
+        requestBody = JSON.stringify(body);
+      }
+    }
 
     const response = await fetch(path, {
       method,
       headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: requestBody,
     });
 
     if (response.status === 401) {
@@ -71,6 +81,9 @@ const Api = {
   },
   post(path, body) {
     return this._request("POST", path, body);
+  },
+  upload(path, formData) {
+    return this._request("POST", path, formData);
   },
   del(path) {
     return this._request("DELETE", path);

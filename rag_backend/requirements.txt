@@ -26,3 +26,4 @@ huggingface-hub==0.26.2
 # --- Utilities ---
 python-dotenv==1.0.1
 requests==2.32.3
+pypdf==4.2.0
