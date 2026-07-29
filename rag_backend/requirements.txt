@@ -21,6 +21,7 @@ pymongo==4.9.2
 # --- AI / RAG ---
 groq==0.13.1
 numpy==1.26.4
+huggingface-hub==0.26.2
 
 # --- Utilities ---
 python-dotenv==1.0.1
